@@ -1,8 +1,8 @@
 #!/bin/bash
 
 STATS_KEYS=(
-  clients/count
-  clients/max
+  connections/count
+  connections/max
   retained/count
   retained/max
   routes/count
@@ -58,19 +58,19 @@ METRICS_KEYS=(
   messages/retained
 )
 
-stats=$(curl --basic -u "$2:$3" -k -s "http://$4:8080/api/v2/monitoring/stats/")
-metrics=$(curl --basic -u "$2:$3" -k -s "http://$4:8080/api/v2/monitoring/metrics/")
+stats=$(curl --basic -u "$2:$3" -k -s "http://$4:18083/api/v3/stats/")
+metrics=$(curl --basic -u "$2:$3" -k -s "http://$4:18083/api/v3/metrics/")
 
 for key in "${STATS_KEYS[@]}"
 do
-  out="$(jq -r --arg arg "$(printf '%s' $key)" '.result[] | .["emq@'"$1"'"]? | .[$arg]' <<< $stats)"
+  out="$(jq -r --arg arg "$(printf '%s' $key)" '.data[0] | .[$arg]' <<< $stats)"
   # printf "%s %s\n" $key $out
   zabbix_sender -z 127.0.0.1 -s $1 -k "emqtt[$key]" -o $out > /dev/null 2>&1
 done
 
 for key in "${METRICS_KEYS[@]}"
 do
-  out="$(jq -r --arg arg "$(printf '%s' $key)" '.result[] | .["emq@'"$1"'"]? | .[$arg]' <<< $metrics)"
+  out="$(jq -r --arg arg "$(printf '%s' $key)" '.data[0] | .metrics | .[$arg]' <<< $metrics)"
   # printf "%s %s\n" $key $out
   zabbix_sender -z 127.0.0.1 -s $1 -k "emqtt[$key]" -o $out > /dev/null 2>&1
 done
